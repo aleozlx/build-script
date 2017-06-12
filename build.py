@@ -41,16 +41,24 @@ def shell_stream(cmd):
 		for line in proc.stdout:
 			yield str(line, encoding='utf-8').rstrip()
 
+#if 0
 VERSION = sys.version_info[0]
 
 def main():
-	r_goofydef = re.compile(r'^#(?:if|elif)\s+([0-9a-z]+)$')
-	r_goofyend = re.compile(r'^#endif$')
+	r_goofydef = re.compile(r'^(#)(?:if|elif)\s+([0-9a-z]+)$')
+	r_goofyend = re.compile(r'^(#)(end)if$')
+	r_verdecor = re.compile(r'^(@)(python\d+)$')
+	transitions = { 'python2': VERSION == 2, 'python3': VERSION == 3, 'end': True }
+	state = ('#', True)
 	for line in shell_stream(['cat', sys.argv[0]]):
-		m = r_goofydef.match(line)
+		m = r_goofydef.match(line) or r_goofyend.match(line) or r_verdecor.match(line)
 		if m:
-			v = m.group(1)
-			print(line, m.group(1))
+			state = (m.group(1), transitions.get(m.group(2), False))
+		elif not line and state[0] == '@':
+			state = ('#', True)
+		elif state[1]:
+			print(line)
 
 if __name__ == '__main__':
 	main()
+#endif
