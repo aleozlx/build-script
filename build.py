@@ -30,16 +30,26 @@ python2, python3 = list(map(__pyversion, [2, 3]))
 #endif
 
 @python2
-def shell_stream(cmd):
+def popen_stream(cmd):
 	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 	for line in proc.stdout:
 		yield unicode(line).rstrip()
 
 @python3
-def shell_stream(cmd):
+def popen_stream(cmd):
 	with subprocess.Popen(cmd, stdout=subprocess.PIPE) as proc:
 		for line in proc.stdout:
 			yield str(line, encoding='utf-8').rstrip()
+
+@python2
+def proc_goofy(code):
+	py_future = '\n'.join(map('from __future__ import {}'.format, ['print_function', 'unicode_literals', 'division']))
+	py_script = '\n'.join([py_future, 'import os, sys', code])
+	return popen_stream(['python2', '-c', py_script])
+
+@python3
+def proc_goofy(code):
+	return popen_stream(['python3', '-c', '\n'.join(['import os, sys', code])])
 
 #if 0
 VERSION = sys.version_info[0]
@@ -50,7 +60,7 @@ def main():
 	r_verdecor = re.compile(r'^(@)(python\d+)$')
 	transitions = { 'python2': VERSION == 2, 'python3': VERSION == 3, 'end': True }
 	state = ('#', True)
-	for line in shell_stream(['cat', sys.argv[0]]):
+	for line in popen_stream(['cat', sys.argv[0]]):
 		m = r_goofydef.match(line) or r_goofyend.match(line) or r_verdecor.match(line)
 		if m:
 			state = (m.group(1), transitions.get(m.group(2), False))
